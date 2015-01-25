@@ -2,7 +2,7 @@
   "name": "autoloadjs",
   "author": "alexisvincent",
   "repository": "https://github.com/alexisvincent/autoloadjs.git",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "dependencies": {
     "ncp": "^1.0.1",
     "walk": "^2.3.9"
