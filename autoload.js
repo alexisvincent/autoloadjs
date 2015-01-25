@@ -1,27 +1,17 @@
-//namespace /sector/autoload/one
+//namespace /sector/autoload
 
 "use strict";
 
 var walk = require('walk');
 var fs = require('fs');
 var path = require("path");
+var util = require("util");
 
 var namespace_tree = {};
 
-function addToTree(tree, array, filename) { 
-   for (var i = 0, length = array.length; i < length; i++) {
-   		if(!tree[array[i]]) {
-   			tree[array[i-1]].files = tree[array[i-1]].files | [];
-			tree[array[i-1]].files.push(filename);
-   		}
-       //tree[array[i]] = tree[array[i]] || {}
-       tree = tree[array[i]]
-   }
-}
-
 var options = {
 	listeners: {
-		//followLinks: false,
+		followLinks: false,
 
 		file: function (root, fileStats, next) {
 
@@ -31,34 +21,38 @@ var options = {
 
 			if (fileStats.name.indexOf(suffix, fileStats.name.length - suffix.length) !== -1) {
 
-				 fs.readFile(path.join(root, fileStats.name), {encoding: 'utf-8'},  function (err, data) {
+				var namespace = fs.readFileSync(path.join(root, fileStats.name), {encoding: 'utf-8'}).match(namespace_regex);
 
-				 	var namespace = data.match(namespace_regex);
+				if (namespace !== null) {
+					var namespace_arr = namespace[1].split('/').splice(1);
 
-				 	if (namespace !== null) {
-				 		var namespace_arr = namespace[1].split('/').splice(1);
+					var tree = namespace_tree;
+					for (var i = 0; i < namespace_arr.length; i++) {
+						tree = tree[namespace_arr[i]] = tree[namespace_arr[i]] || {};
+					}
 
-				 		addToTree(namespace_tree, namespace_arr, fileStats.name);
-				 		console.log(namespace_tree);
+					if (!('files' in tree)) {
+						tree.files = [];
+					}
 
-				 	}
-
-				 	//next();
-				 });
-			} else {
-				//next();
+					tree.files.push({
+						name: fileStats.name.substr(0, fileStats.name.lastIndexOf(".")),
+						filepath: './' + path.join(root, fileStats.name)
+					});
+				}
 			}
-
-
 		},
 		errors: function (root, nodeStatsArray, next) {
-			next();
+		},
+		end: function () {
+			console.log(util.inspect(namespace_tree, {depth: null, colors: true}));
 		}
 	}
 };
 
 function autoload(dir) {
 	walk.walkSync(dir, options);
+
 }
 
 module.exports = autoload;

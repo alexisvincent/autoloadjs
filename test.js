@@ -1,4 +1,4 @@
-//namespace /sector/test/js
+//namespace /sector/autoload
 
 var autoload = require ('./autoload');
 
