@@ -1,0 +1,13 @@
+{
+  "name": "autoloadjs",
+  "author": "alexisvincent",
+  "repository": "https://github.com/alexisvincent/autoloadjs.git",
+  "version": "0.0.0",
+  "dependencies": {
+    "walk": "^2.3.9"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=0.8.0"
+  }
+}
