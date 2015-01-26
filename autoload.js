@@ -4,56 +4,45 @@ var walk = require('walk');
 var fs = require('fs');
 var path = require("path");
 var util = require("util");
-var ncp = require('ncp').ncp;
-
-ncp.limit = 16;
+var through = require('through2');
 
 var namespace_tree = {};
-var max_char = 255;
 var suffix = ".js";
 var namespace_regex = /^\/\/namespace\s\\(\w[\\]?)*/i;
 var autoload_regex = /autoload\(['"]\\(\w[\\]?)*['"]\)/ig;
 
-var options = {
-	followLinks: false,
+var status = {
+	fileWalker: true,
+	openStreams: 0
 };
 
-function log(message) {
-	if (message) {
-		console.log('Log: '+ message);
-	} else {
-		console.log('Log: ');
-	}
+function logMap() {
+	console.log(util.inspect(namespace_tree, {depth: null, colors: true}));
 }
 
-function generateTree(source, destination) {
-	var fileWalker = walk.walk(source, options);
+function buildMap(source, destination) {
+	var fileWalker = walk.walk(source, {followLinks: false});
 
 	fileWalker.on('file', function (root, fileStats, next) {
 
 		if (fileStats.name.indexOf(suffix, fileStats.name.length - suffix.length) !== -1) {
 
-			var stream = fs.createReadStream(path.join(root, fileStats.name), {
-				flags: 'r',
-				encoding: 'utf-8',
-				fd: null,
-				bufferSize: 1
-			});
+			status.openStreams++;
 
-			stream.addListener('data', function (char) {
-				var i = 0;
-				var line = '';
+			var stream = fs.createReadStream(path.join(root, fileStats.name), {encoding: 'utf-8'});
 
-				while (char[i] != '\n' && i < max_char) {
-					line += char[i++];
-				}
+			stream.on('data', function (data) {
 
-				var namespace = line.match(namespace_regex);
+				stream.pause();
+
+				var namespace = data.match(namespace_regex);
 
 				if (namespace !== null) {
-					var namespace_arr = namespace[0].split('\\').splice(1);
 
-					if (namespace_arr[0] == '') {
+					var namespace_arr = namespace[0].split('\\');
+					namespace_arr.shift();
+
+					if (namespace_arr[0] === '') {
 						namespace_arr.shift();
 					}
 
@@ -75,73 +64,99 @@ function generateTree(source, destination) {
 				stream.destroy();
 			});
 
-			stream.addListener('error', function (error) {
+			stream.on('error', function (error) {
+				console.log(error);
 				stream.destroy();
+			});
+
+			stream.on('end', function () {
+				status.openStreams--;
+
+				if (!status.fileWalker && status.openStreams === 0) {
+					logMap();
+					build(source, destination);
+				}
 			});
 		}
 		next();
 	});
 
 	fileWalker.on('end', function () {
-		console.log(util.inspect(namespace_tree, {depth: null, colors: true}));
-		build(source, destination)
+		status.fileWalker = false;
 	});
+}
+
+function transformer(root, fileStats) {
+
+	var stream = through.obj(function (data, encoding, next) {
+
+		var streamer = through();
+		streamer.on('error', this.emit.bind(this, 'error'));
+
+		this.push(data.replace(autoload_regex, function (data) {
+
+			var tree = JSON.parse(JSON.stringify(namespace_tree));
+			var path = '';
+
+			try {
+				var namespace_arr = data.match(/\\(\w[\\]?)*/i)[0].split('\\').splice(1);
+				var file = namespace_arr.pop();
+
+				if (namespace_arr[0] === '') {
+					namespace_arr.shift();
+				}
+
+				for (var i = 0; i < namespace_arr.length; i++) {
+					tree = tree[namespace_arr[i]];
+				}
+
+				for (var i = 0; i < tree.files.length; i++) {
+					if (tree.files[i].name === file) {
+						path = tree.files[i].path;
+					}
+				}
+
+			} catch (err) {
+				console.log("There was an error building the file path for " + data);
+				console.log(err)
+			}
+
+			return "require('" + path + "')";
+		}));
+
+		next();
+	});
+
+	return stream;
 }
 
 function build(source, destination) {
 
-	var ncpOptions = {
-		transform: function (input, output) {
+	status.fileWalker = true;
 
-			input.setEncoding('utf8');
-			input.on('data', function (data) {
-				output.write(data.replace(autoload_regex, function (data) {
-					
-					var tree = JSON.parse(JSON.stringify(namespace_tree));
-					var path = '';
-					
-					try {
-						var namespace_arr = data.match(/\\(\w[\\]?)*/i)[0].split('\\').splice(1);
-						var file = namespace_arr.pop();
+	var fileWalker = walk.walk(source, {followLinks: false});
 
-						if (namespace_arr[0] == '') {
-							namespace_arr.shift();
-						}
+	fileWalker.on('file', function (root, fileStats, next) {
 
-						for (var i = 0; i < namespace_arr.length; i++) {
-							tree = tree[namespace_arr[i]];
-						}
-						
-						for (var i = 0; i < tree.files.length; i++) {
-							if (tree.files[i].name === file) {
-								path = tree.files[i].path;
-							}
-						}
-						
-					} catch(err) {
-						console.log("There was an error building the file path for " + data);
-						console.log(err)
-					}
+		if (fileStats.name.indexOf(suffix, fileStats.name.length - suffix.length) !== -1) {
 
-					return "require('" + path + "')";
-				}));
-			});
+			status.openStreams++;
 
+			var stream = fs.createReadStream(path.join(root, fileStats.name), {encoding: 'utf-8'});
 
-
+			stream.pipe(transformer(root, fileStats)).pipe(fs.createWriteStream(path.join(destination, root, fileStats.name)));
 		}
-	};
 
-	ncp(source, destination, ncpOptions, function (err) {
-		if (err) {
-			console.error(err);
-		}
-		console.log('done!');
+		next();
+	});
+
+	fileWalker.on('end', function () {
+		status.fileWalker = false;
 	});
 }
 
 function autoload(source, destination) {
-	generateTree(source, destination);
+	buildMap(source, destination);
 }
 
 module.exports = autoload;
