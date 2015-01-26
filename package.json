@@ -2,16 +2,12 @@
   "name": "autoloadjs",
   "author": "alexisvincent",
   "repository": "https://github.com/alexisvincent/autoloadjs.git",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "dependencies": {
-    "ncp": "^1.0.1",
-    "walk": "^2.3.9"
-  },
-  "devDependencies": {
-    "through": "^2.3.6",
-    "through2": "^0.6.3"
+    "walk": "^2.3.9",
+	"through2": "^0.6.3"
   },
   "engines": {
-    "node": ">=0.8.0"
+    "node": ">=0.10.0"
   }
 }
