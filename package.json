@@ -3,6 +3,7 @@
   "author": "alexisvincent",
   "repository": "https://github.com/alexisvincent/autoloadjs.git",
   "version": "0.0.2",
+  "main": "autoload.js",
   "dependencies": {
     "walk": "^2.3.9",
 	"through2": "^0.6.3"
