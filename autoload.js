@@ -5,6 +5,7 @@ var fs = require('fs');
 var path = require("path");
 var util = require("util");
 var through = require('through2');
+var mkdirp = require('mkdirp');
 
 var namespace_tree = {};
 var suffix = ".js";
@@ -24,10 +25,11 @@ function buildMap(source, destination) {
 	var fileWalker = walk.walk(source, {followLinks: false});
 
 	fileWalker.on('file', function (root, fileStats, next) {
-
+		
 		if (fileStats.name.indexOf(suffix, fileStats.name.length - suffix.length) !== -1) {
 
 			status.openStreams++;
+			mkdirp.sync(path.join(destination, root));
 
 			var stream = fs.createReadStream(path.join(root, fileStats.name), {encoding: 'utf-8'});
 
@@ -96,7 +98,7 @@ function transformer(root, fileStats) {
 		this.push(data.replace(autoload_regex, function (data) {
 
 			var tree = JSON.parse(JSON.stringify(namespace_tree));
-			var path = '';
+			var filePath = '';
 
 			try {
 				var namespace_arr = data.match(/\\(\w[\\]?)*/i)[0].split('\\').splice(1);
@@ -112,16 +114,17 @@ function transformer(root, fileStats) {
 
 				for (var i = 0; i < tree.files.length; i++) {
 					if (tree.files[i].name === file) {
-						path = tree.files[i].path;
+						filePath = "./"+path.relative(path.join(root), tree.files[i].path);
+						console.log(filePath);
 					}
 				}
 
 			} catch (err) {
 				console.log("There was an error building the file path for " + data);
-				console.log(err)
+				console.log(err);
 			}
 
-			return "require('" + path + "')";
+			return "require('" + filePath + "')";
 		}));
 
 		next();

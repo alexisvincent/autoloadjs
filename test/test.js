@@ -1,4 +1,4 @@
-//namespace \lol\l
+//namespace \autoloadjs\test
 
 var autoload = require ('../autoload');
-autoload('../../sector/shared', '../build');
+autoload('.', '../build');
