@@ -10,7 +10,7 @@ var mkdirp = require('mkdirp');
 var namespace_tree = {};
 var suffix = ".js";
 var namespace_regex = /^\/\/namespace\s\\(\w[\\]?)*/i;
-var autoload_regex = /autoload\(['"]\\(\w[\\]?)*['"]\)/ig;
+var autoload_regex = /autoload\(['"]\\([\w.][\\]?)*['"]\)/ig;
 
 var status = {
 	fileWalker: true,
@@ -101,7 +101,7 @@ function transformer(root, fileStats) {
 			var filePath = '';
 
 			try {
-				var namespace_arr = data.match(/\\(\w[\\]?)*/i)[0].split('\\').splice(1);
+				var namespace_arr = data.match(/\\([\w.][\\]?)*/i)[0].split('\\').splice(1);
 				var file = namespace_arr.pop();
 
 				if (namespace_arr[0] === '') {
@@ -115,7 +115,6 @@ function transformer(root, fileStats) {
 				for (var i = 0; i < tree.files.length; i++) {
 					if (tree.files[i].name === file) {
 						filePath = "./"+path.relative(path.join(root), tree.files[i].path);
-						console.log(filePath);
 					}
 				}
 

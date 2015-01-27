@@ -2,7 +2,7 @@
   "name": "autoloadjs",
   "author": "alexisvincent",
   "repository": "https://github.com/alexisvincent/autoloadjs.git",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "autoload.js",
   "dependencies": {
     "mkdirp": "^0.5.0",
