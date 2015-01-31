@@ -1,3 +1,3 @@
-//namespace autoloadjs\test
+//namespace \autoloadjs\lolol
 
-var one = autoload('\autoloadjs\test\test');
+var one = autoload('hahaha\test');
