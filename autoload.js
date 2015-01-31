@@ -9,7 +9,7 @@ var mkdirp = require('mkdirp');
 
 var namespace_tree = {};
 var suffix = ".js";
-var namespace_regex = /^\/\/namespace\s\\(\w[\\]?)*/i;
+var namespace_regex = /^\/\/namespace\s[\\]?(\w[\\]?)*/i;
 var autoload_regex = /autoload\(['"]\\([\w.][\\]?)*['"]\)/ig;
 
 var status = {
@@ -22,12 +22,11 @@ function logMap() {
 }
 
 function buildMap(source, destination) {
+	console.log("Building map");
 	var fileWalker = walk.walk(source, {followLinks: false});
 
 	fileWalker.on('file', function (root, fileStats, next) {
-		
 		if (fileStats.name.indexOf(suffix, fileStats.name.length - suffix.length) !== -1) {
-
 			status.openStreams++;
 			mkdirp.sync(path.join(destination, root));
 
@@ -39,24 +38,36 @@ function buildMap(source, destination) {
 
 				var namespace = data.match(namespace_regex);
 
+				//there is a namespace on the first line
 				if (namespace !== null) {
-
-					var namespace_arr = namespace[0].split('\\');
-					namespace_arr.shift();
-
-					if (namespace_arr[0] === '') {
-						namespace_arr.shift();
+					
+					//remove everything up until the end of the word namespace, and then trim it
+					namespace = (""+namespace[0].substring(namespace[0].indexOf("namespace")+9)).trim();
+					
+					//remove backslash if it exists
+					if(namespace.charAt(0) === "\\"){
+						namespace = namespace.substring(1);
 					}
+					
+					//split up the namespace into its parts
+					var namespace_arr = namespace.split('\\');
 
 					var tree = namespace_tree;
+					
+					//for each part of the namespace, traverse the tree
 					for (var i = 0; i < namespace_arr.length; i++) {
+						
+						//and get the branch of the tree we want to work with, and
+						//if it doesnt exist, make it an empty object
 						tree = tree[namespace_arr[i]] = tree[namespace_arr[i]] || {};
 					}
 
+					//make sure there is always a files array
 					if (!('files' in tree)) {
 						tree.files = [];
 					}
 
+					//push the file we found
 					tree.files.push({
 						name: fileStats.name.substr(0, fileStats.name.lastIndexOf(".")),
 						path: './' + path.join(root, fileStats.name)
@@ -107,7 +118,6 @@ function transformer(root, fileStats) {
 				if (namespace_arr[0] === '') {
 					namespace_arr.shift();
 				}
-
 				for (var i = 0; i < namespace_arr.length; i++) {
 					tree = tree[namespace_arr[i]];
 				}
